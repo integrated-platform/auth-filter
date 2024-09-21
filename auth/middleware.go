@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 // 사용자 정보 구조체
@@ -73,15 +71,14 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return secretKey, nil
-		})
-
-		if err != nil || !token.Valid {
+		// 서버에 토큰 검증 요청
+		resp, err := http.Post("http://api-server-url/validate-token", "application/json", bytes.NewBuffer([]byte(`{"token":"`+tokenString+`"}`)))
+		if err != nil || resp.StatusCode != http.StatusOK {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
+		// 토큰이 유효하면 다음 핸들러로 진행
 		next.ServeHTTP(w, r)
 	})
 }
