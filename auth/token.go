@@ -1,45 +1,45 @@
 package auth
 
 import (
-	"errors"
-	"time"
-
-	"github.com/dgrijalva/jwt-go"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
-// 비밀 키
-var secretKey = []byte("your_secret_key")
-
-// JWT 생성 함수
-func GenerateJWT(username string) (string, error) {
-	claims := jwt.MapClaims{
-		"username": username,
-		"exp":      time.Now().Add(time.Hour * 1).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secretKey)
+type AuthRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-// JWT 검증 함수
-func ValidateJWT(tokenString string) (string, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Signing method이 HS256인지 확인
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-		return secretKey, nil
-	})
-
+// JWT 생성 함수
+func GenerateJWT(username, password string) (string, error) {
+	// API 서버에 인증 요청
+	authRequest := AuthRequest{Username: username, Password: password}
+	requestBody, err := json.Marshal(authRequest)
 	if err != nil {
 		return "", err
 	}
 
-	// 토큰이 유효한지 확인
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		username := claims["username"].(string)
-		return username, nil
+	resp, err := http.Post("http://api-server-url/login", "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("authentication failed: %s", resp.Status)
 	}
 
-	return "", errors.New("invalid token")
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	token, ok := result["token"]
+	if !ok {
+		return "", fmt.Errorf("token not found in response")
+	}
+
+	return token, nil
 }

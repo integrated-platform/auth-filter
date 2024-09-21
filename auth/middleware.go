@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -14,6 +16,30 @@ type User struct {
 	Password string `json:"password"`
 }
 
+// 사용자 검증 함수 (API 서버로 요청)
+func isValidUser(username, password string) bool {
+	// API 서버 URL (예시)
+	apiURL := "http://api.example.com/validate-user"
+
+	// 요청 데이터 준비
+	userData := map[string]string{
+		"username": username,
+		"password": password,
+	}
+	jsonData, _ := json.Marshal(userData)
+
+	// API 요청
+	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Println("Error sending request to API:", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	// 응답 상태코드 체크
+	return resp.StatusCode == http.StatusOK
+}
+
 // 로그인 핸들러
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
@@ -23,7 +49,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 사용자 인증 로직
-	if user.Username == "testuser" && user.Password == "password" {
+	if isValidUser(user.Username, user.Password) {
 		tokenString, err := GenerateJWT(user.Username)
 		if err != nil {
 			http.Error(w, "Could not generate token", http.StatusInternalServerError)
@@ -58,13 +84,4 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-// 보호된 핸들러
-func PrivateHandler(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value("claims").(jwt.MapClaims)
-	username := claims["username"].(string)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Authorized access", "username": username})
 }
