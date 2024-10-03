@@ -10,18 +10,18 @@ import (
 
 // 사용자 정보 구조체
 type User struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 // 사용자 검증 함수 (API 서버로 요청)
-func isValidUser(username, password string) bool {
+func isValidUser(email, password string) bool {
 	// API 서버 URL
 	apiURL := "http://localhost:8080/users"
 
 	// 요청 데이터 준비
 	userData := map[string]string{
-		"username": username,
+		"email":    email,
 		"password": password,
 	}
 	jsonData, _ := json.Marshal(userData)
@@ -51,7 +51,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 요청 데이터 준비
 	registrationRequest := map[string]string{
-		"username": user.Username,
+		"email":    user.Email,
 		"password": user.Password,
 	}
 	jsonData, err := json.Marshal(registrationRequest)
@@ -68,15 +68,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// JWT 토큰 생성
-	tokenString, err := GenerateJWT(user.Username, user.Password)
-	if err != nil {
-		http.Error(w, "토큰 생성에 실패했습니다", http.StatusInternalServerError)
-		return
-	}
-
+	// 사용자 등록 성공 시 응답
+	w.WriteHeader(http.StatusCreated) // 201 Created
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	json.NewEncoder(w).Encode(map[string]string{"message": "사용자 등록이 완료되었습니다."})
 }
 
 // 로그인 핸들러
@@ -88,8 +83,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 사용자 인증 로직
-	if isValidUser(user.Username, user.Password) {
-		tokenString, err := GenerateJWT(user.Username)
+	if isValidUser(user.Email, user.Password) {
+		tokenString, err := GenerateJWT(user.Email, user.Password)
 		if err != nil {
 			http.Error(w, "Could not generate token", http.StatusInternalServerError)
 			return

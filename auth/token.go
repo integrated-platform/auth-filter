@@ -8,14 +8,14 @@ import (
 )
 
 type AuthRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"Email"`
 	Password string `json:"password"`
 }
 
 // JWT 생성 함수
-func GenerateJWT(username string, password string) (string, error) {
+func GenerateJWT(Email string, password string) (string, error) {
 	// API 서버에 인증 요청
-	authRequest := AuthRequest{Username: username, Password: password}
+	authRequest := AuthRequest{Email: Email, Password: password}
 	requestBody, err := json.Marshal(authRequest)
 	if err != nil {
 		return "", err
