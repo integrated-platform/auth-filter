@@ -13,7 +13,7 @@ type AuthRequest struct {
 }
 
 // JWT 생성 함수
-func GenerateJWT(username, password string) (string, error) {
+func GenerateJWT(username string, password string) (string, error) {
 	// API 서버에 인증 요청
 	authRequest := AuthRequest{Username: username, Password: password}
 	requestBody, err := json.Marshal(authRequest)
@@ -21,7 +21,7 @@ func GenerateJWT(username, password string) (string, error) {
 		return "", err
 	}
 
-	resp, err := http.Post("http://api-server-url/login", "application/json", bytes.NewBuffer(requestBody))
+	resp, err := http.Post("http://localhost:8080/login", "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", err
 	}

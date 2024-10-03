@@ -16,8 +16,8 @@ type User struct {
 
 // 사용자 검증 함수 (API 서버로 요청)
 func isValidUser(username, password string) bool {
-	// API 서버 URL (예시)
-	apiURL := "http://api.example.com/validate-user"
+	// API 서버 URL
+	apiURL := "http://localhost:8080/users"
 
 	// 요청 데이터 준비
 	userData := map[string]string{
@@ -36,6 +36,47 @@ func isValidUser(username, password string) bool {
 
 	// 응답 상태코드 체크
 	return resp.StatusCode == http.StatusOK
+}
+
+// 회원가입 핸들러
+func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "잘못된 요청입니다", http.StatusBadRequest)
+		return
+	}
+
+	// API 서버 URL
+	apiURL := "http://localhost:8080/users"
+
+	// 요청 데이터 준비
+	registrationRequest := map[string]string{
+		"username": user.Username,
+		"password": user.Password,
+	}
+	jsonData, err := json.Marshal(registrationRequest)
+	if err != nil {
+		http.Error(w, "데이터 처리 중 오류가 발생했습니다", http.StatusInternalServerError)
+		return
+	}
+
+	// API 서버에 사용자 추가 요청
+	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		http.Error(w, "사용자를 추가하는 데 실패했습니다", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// JWT 토큰 생성
+	tokenString, err := GenerateJWT(user.Username, user.Password)
+	if err != nil {
+		http.Error(w, "토큰 생성에 실패했습니다", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
 
 // 로그인 핸들러
@@ -72,7 +113,7 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
 		// 서버에 토큰 검증 요청
-		resp, err := http.Post("http://api-server-url/validate-token", "application/json", bytes.NewBuffer([]byte(`{"token":"`+tokenString+`"}`)))
+		resp, err := http.Post("http://localhost:8080/validate-token", "application/json", bytes.NewBuffer([]byte(`{"token":"`+tokenString+`"}`)))
 		if err != nil || resp.StatusCode != http.StatusOK {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return

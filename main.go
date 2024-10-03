@@ -8,6 +8,7 @@ import (
 
 func main() {
 	http.HandleFunc("/login", auth.LoginHandler)
+	http.HandleFunc("/register", auth.RegisterHandler)
 	// 기본 핸들러로 모든 요청 처리
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// 로그인 요청이 아니면 JWT 인증 미들웨어 적용
@@ -22,5 +23,5 @@ func main() {
 		}
 	})
 	fmt.Println("Server is running on port 8080")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":5000", nil)
 }
