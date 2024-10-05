@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -20,5 +21,12 @@ func LoadEnv() error {
 func GetAPIURL(endpoint string) string {
 	host := os.Getenv("AUTH_SERVER_HOST")
 	port := os.Getenv("AUTH_SERVER_PORT")
-	return fmt.Sprintf("http://%s:%s%s", host, port, endpoint)
+	apiURL := fmt.Sprintf("%s:%s%s", host, port, endpoint)
+
+	// 로그 출력
+	log.Printf("API URL: %s", apiURL)
+	log.Printf("Using AUTH_SERVER_HOST: %s", host)
+	log.Printf("Using AUTH_SERVER_PORT: %s", port)
+
+	return apiURL
 }

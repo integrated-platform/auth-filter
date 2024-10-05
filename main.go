@@ -35,7 +35,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// 로그 출력
 		log.Printf(
-			"[%s] %s %s %d %s %v",
+			"[%s] %s %s | Status: %d | Duration: %v | Headers: %v",
 			r.Method,
 			r.URL.Path,
 			r.RemoteAddr,
