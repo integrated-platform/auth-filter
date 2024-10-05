@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	utils "auth-filter/utility" // utils 패키지 import
 )
 
 // 사용자 정보 구조체
@@ -16,26 +18,36 @@ type User struct {
 
 // 사용자 검증 함수 (API 서버로 요청)
 func isValidUser(email, password string) bool {
+	// .env 파일 로드
+	if err := utils.LoadEnv(); err != nil {
+		log.Println("환경 변수 로드 실패:", err)
+		return false
+	}
+
 	// API 서버 URL
-	apiURL := "http://localhost:8080/users"
+	apiURL := utils.GetAPIURL("/users/login")
 
 	// 요청 데이터 준비
-	userData := map[string]string{
-		"email":    email,
+	loginRequest := map[string]string{
+		"email":    email, // 여기에 이메일 대신 사용자 이름으로 사용
 		"password": password,
 	}
-	jsonData, _ := json.Marshal(userData)
+	jsonData, err := json.Marshal(loginRequest)
+	if err != nil {
+		log.Println("JSON 변환 실패:", err)
+		return false
+	}
 
 	// API 요청
 	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Println("Error sending request to API:", err)
+		log.Println("API 서버로 요청 실패:", err)
 		return false
 	}
 	defer resp.Body.Close()
 
 	// 응답 상태코드 체크
-	return resp.StatusCode == http.StatusOK
+	return resp.StatusCode == http.StatusOK // 로그인 성공 여부
 }
 
 // 회원가입 핸들러
@@ -46,8 +58,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// .env 파일 로드
+	if err := utils.LoadEnv(); err != nil {
+		http.Error(w, "환경 변수를 로드할 수 없습니다", http.StatusInternalServerError)
+		return
+	}
+
 	// API 서버 URL
-	apiURL := "http://localhost:8080/users"
+	apiURL := utils.GetAPIURL("/users")
 
 	// 요청 데이터 준비
 	registrationRequest := map[string]string{
@@ -78,7 +96,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		http.Error(w, "잘못된 요청입니다", http.StatusBadRequest)
 		return
 	}
 
@@ -86,13 +104,13 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if isValidUser(user.Email, user.Password) {
 		tokenString, err := GenerateJWT(user.Email, user.Password)
 		if err != nil {
-			http.Error(w, "Could not generate token", http.StatusInternalServerError)
+			http.Error(w, "토큰 생성에 실패했습니다", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 	} else {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		http.Error(w, "잘못된 자격 증명입니다", http.StatusUnauthorized)
 	}
 }
 
@@ -107,10 +125,17 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
+		// .env 파일 로드
+		if err := utils.LoadEnv(); err != nil {
+			http.Error(w, "환경 변수를 로드할 수 없습니다", http.StatusInternalServerError)
+			return
+		}
+
 		// 서버에 토큰 검증 요청
-		resp, err := http.Post("http://localhost:8080/validate-token", "application/json", bytes.NewBuffer([]byte(`{"token":"`+tokenString+`"}`)))
+		apiURL := utils.GetAPIURL("/validate-token")
+		resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer([]byte(`{"token":"`+tokenString+`"}`)))
 		if err != nil || resp.StatusCode != http.StatusOK {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, "잘못된 토큰입니다", http.StatusUnauthorized)
 			return
 		}
 
