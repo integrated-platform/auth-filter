@@ -13,6 +13,7 @@ import (
 // 사용자 정보 구조체
 type User struct {
 	Email    string `json:"email"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
@@ -71,6 +72,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	registrationRequest := map[string]string{
 		"email":    user.Email,
 		"password": user.Password,
+		"username": user.Username,
 	}
 	jsonData, err := json.Marshal(registrationRequest)
 	if err != nil {
