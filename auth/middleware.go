@@ -82,16 +82,38 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// API 서버에 사용자 추가 요청
 	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil || resp.StatusCode != http.StatusOK {
-		http.Error(w, "사용자를 추가하는 데 실패했습니다", http.StatusInternalServerError)
+	if err != nil {
+		http.Error(w, "API 서버에 요청을 보내는 데 실패했습니다", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
-	// 사용자 등록 성공 시 응답
-	w.WriteHeader(http.StatusCreated) // 201 Created
+	// API 응답 처리
+	var apiResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		http.Error(w, "응답 데이터를 처리하는 중 오류가 발생했습니다", http.StatusInternalServerError)
+		return
+	}
+
+	// Spring API 응답에서 성공 여부와 메시지를 가져옴
+	success, _ := apiResponse["success"].(bool)
+	message, _ := apiResponse["message"].(string)
+
+	// 클라이언트에 성공 여부와 메시지 전달
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "사용자 등록이 완료되었습니다."})
+	if !success {
+		// 실패한 경우, 예: 이메일 중복
+		w.WriteHeader(http.StatusConflict) // 409 Conflict
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": message, // 예: "이미 존재하는 이메일입니다."
+		})
+	} else {
+		// 성공한 경우
+		w.WriteHeader(http.StatusCreated) // 201 Created
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "사용자 등록이 완료되었습니다.", // 성공 메시지
+		})
+	}
 }
 
 // 로그인 핸들러
