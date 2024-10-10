@@ -34,15 +34,12 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(crw, r)
 
 		// 로그 출력
-		log.Printf(
-			"[%s] %s %s | Status: %d | Duration: %v | Headers: %v",
-			r.Method,
-			r.URL.Path,
-			r.RemoteAddr,
-			crw.StatusCode, // 상태 코드
-			time.Since(start),
-			r.Header, // 요청 헤더
-		)
+		log.Printf("Request Method: %s\n", r.Method)
+		log.Printf("Request URL: %s\n", r.URL.Path)
+		log.Printf("Remote Address: %s\n", r.RemoteAddr)
+		log.Printf("Status Code: %d\n", crw.StatusCode) // 상태 코드
+		log.Printf("Duration: %v\n", time.Since(start))
+		log.Printf("Request Headers: %v\n", r.Header) // 요청 헤더
 	})
 }
 
@@ -51,18 +48,17 @@ func main() {
 	http.HandleFunc("/login", auth.LoginHandler)
 	http.HandleFunc("/register", auth.RegisterHandler)
 
-	// 기본 핸들러로 모든 요청 처리
+	// 모든 요청을 API 서버로 전달
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// 로그인 요청이 아니면 JWT 인증 미들웨어 적용
-		if r.URL.Path != "/login" {
-			// JWT 인증 미들웨어 적용
-			auth.JwtAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// 여기서 URL에 따라 다른 처리 가능
-				fmt.Fprintf(w, "Welcome to %s", r.URL.Path)
-			})).ServeHTTP(w, r)
+		if r.URL.Path != "/login" && r.URL.Path != "/register" {
+			auth.ForwardRequest(w, r) // 모든 요청을 API 서버로 전달
 		} else {
-			// 로그인 요청 처리
-			auth.LoginHandler(w, r)
+			// 로그인 및 회원가입 요청 처리
+			if r.URL.Path == "/login" {
+				auth.LoginHandler(w, r)
+			} else if r.URL.Path == "/register" {
+				auth.RegisterHandler(w, r)
+			}
 		}
 	})
 
