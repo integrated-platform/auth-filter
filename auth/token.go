@@ -47,11 +47,13 @@ func GenerateJWT(email string, password string) (string, error) {
 		return "", err
 	}
 
-	// 토큰을 API 응답에서 추출
-	token, ok := result["data"].(map[string]interface{})["token"].(string)
+	// Access Token을 API 응답에서 추출
+	accessToken, ok := result["data"].(map[string]interface{})["accessToken"].(string)
 	if !ok {
-		return "", fmt.Errorf("token not found in response")
+		return "", fmt.Errorf("access token not found in response")
 	}
 
-	return token, nil
+	// Refresh Token은 서버에서 HTTP-Only 쿠키로 저장하므로 클라이언트 측에서 다룰 필요 없음
+
+	return accessToken, nil
 }

@@ -156,8 +156,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// JWT 생성
-	tokenString, err := GenerateJWT(user.Email, user.Password)
+	// JWT 생성 (Refresh Token은 서버에서 HTTP-Only 쿠키로 저장)
+	tokenString, err := GenerateJWT(user.Email, user.Password) // Access Token만 반환
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -170,8 +170,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// 성공 응답
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": tokenString,
+	loginResponse := map[string]string{
+		"accessToken": tokenString,
+		// Refresh Token은 클라이언트에 보내지 않음
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "로그인 성공",
+		"data":    loginResponse,
 	})
 }
 
